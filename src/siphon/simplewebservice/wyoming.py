@@ -98,6 +98,20 @@ class WyomingUpperAir(HTTPEndPoint):
         elevation = float(lines[6].split(':')[1].strip())
         pw = float(lines[-1].split(':')[1].strip())
 
+        derivedDict = {}
+        cols = []
+        for line in lines[7:-1]:
+            key = line.split(':')[0].strip().replace(' ','_')
+            value = float(line.split(':')[1].strip())
+            cols.append(key)
+            derivedDict[key]=value
+        #    
+        #    derivedDict[key]=value
+        #print(cols)
+        #print(values)
+        df_derived = pd.DataFrame(data=derivedDict, index = [time])
+        df_derived=df_derived[cols]
+
         df['station'] = station
         df['station_number'] = station_number
         df['time'] = sounding_time
@@ -106,6 +120,31 @@ class WyomingUpperAir(HTTPEndPoint):
         df['elevation'] = elevation
         df['pw'] = pw
 
+        #Add unit dictionary for derived
+        unitNames = {
+                    'Convective_Available_Potential_Energy': 'J/kg',
+                    'CAPE_using_virtual_temperature': 'J/kg',
+                    'Convective_Inhibition': 'J/kg',
+                    'CINS_using_virtual_temperature': 'J/kg',
+                    'Equilibrum_Level': 'hPa',
+                    'Equilibrum_Level_using_virtual_temperature': 'hPa',
+                    'Level_of_Free_Convection': 'hPa',
+                    'LFCT_using_virtual_temperature': 'hPa',
+                    'Temp_[K]_of_the_Lifted_Condensation_Level': 'K',
+                    'Pres_[hPa]_of_the_Lifted_Condensation_Level': 'hPa',
+                    'Equivalent_potential_temp_[K]_of_the_LCL': 'K',
+                    'Mean_mixed_layer_potential_temperature': 'K',
+                    'Mean_mixed_layer_mixing_ratio': 'g/kg',
+                    '1000_hPa_to_500_hPa_thickness': 'm'}
+
+        unitDict = {}
+        for key in derivedDict.keys():
+            if key in unitNames:
+                unitDict[key] = unitNames[key]
+            else:
+                unitDict[key] = None
+
+        df_derived.units =  unitDict
         # Add unit dictionary
         df.units = {'pressure': 'hPa',
                     'height': 'meter',
@@ -122,7 +161,7 @@ class WyomingUpperAir(HTTPEndPoint):
                     'longitude': 'degrees',
                     'elevation': 'meter',
                     'pw': 'millimeter'}
-        return df
+        return df, df_derived,unitDict
 
     def _get_data_raw(self, time, site_id):
         """Download data from the University of Wyoming's upper air archive.
